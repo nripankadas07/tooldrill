@@ -8,8 +8,12 @@
 - Count JSON Schema `minLength` and `maxLength` in Unicode code points rather than UTF-16 code units.
 - Add practical width, enum, schema-node, generated-case, and aggregate-witness budgets that reject expensive manifests before case materialization.
 - Measure nested `const` and `enum` JSON values iteratively before cloning, rejecting cycles, sparse arrays, non-plain objects, non-finite numbers, excessive depth/nodes/strings, aggregate literal overload, and generated-case expansion with saturating budget arithmetic.
-- Reject patterns with multiple variable repetitions and bound regex evaluation inputs to 100,000 Unicode code points, preventing ambiguous-repetition backtracking in direct validation and response checks.
+- Parse explicitly anchored patterns into a bounded whole-string matcher instead
+  of dynamically compiling manifest text as JavaScript regular expressions;
+  reject multiple variable repetitions and cap evaluated inputs at 100,000
+  Unicode code points.
 - Reject trailing CLI operands and option-like positional values.
+- Reconstruct required-property omissions without dynamic property deletion.
 - Reject sparse or extended `enum` and `required` arrays as non-JSON schema structure.
 - Publish reports through component-verified staging, directory/target identity rechecks, per-file atomic renames, and set-level backup/rollback. Output-path and target-file symlinks are rejected before any artifact is replaced.
 - Serialize cooperative artifact writers with a bounded fail-closed filesystem lock and reconcile rename-then-error outcomes by inode identity, preventing mixed concurrent bundles and restoring the full prior set after ambiguous failures.

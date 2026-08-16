@@ -214,21 +214,139 @@ export function assertAggregateGeneratedCaseBudget(caseCount: number, witnessNod
   }
 }
 
-interface PatternToken { value: string; minimum: number; maximum: number }
+type CharacterMatcher =
+  | { kind: "literal"; value: string }
+  | { kind: "any" }
+  | { kind: "digit" | "word" | "space"; negated: boolean }
+  | { kind: "class"; negated: boolean; members: ClassMember[] };
+type ClassMember =
+  | { kind: "literal"; value: string }
+  | { kind: "range"; first: number; last: number }
+  | { kind: "digit" | "word" | "space"; negated: boolean };
+interface PatternToken { value: string; matcher: CharacterMatcher; minimum: number; maximum: number }
+interface PatternProgram { tokens: PatternToken[]; minimumLength: number; maximumLength: number }
 
-function classValue(source: string): string {
-  let expression: RegExp;
-  try { expression = new RegExp(`^[${source}]$`, "u"); }
-  catch { throw new Error("pattern contains an invalid character class"); }
-  const candidates = "aA0zZ9_- !@#bcdefghijklmnopqrstuvwxyBCDEFGHIQRSTUVWXY12345678";
-  for (const candidate of candidates) if (expression.test(candidate)) return candidate;
-  throw new Error("pattern character class has no deterministic ASCII witness");
+const ASCII_WITNESS = "a".repeat(MAX_GENERATED_CARDINALITY + 1);
+const CLASS_WITNESS_CANDIDATES = [..."aA0zZ9_- !@#bcdefghijklmnopqrstuvwxyBCDEFGHIQRSTUVWXY12345678"];
+
+function categoryMatches(kind: "digit" | "word" | "space", character: string): boolean {
+  if (kind === "digit") return character >= "0" && character <= "9";
+  if (kind === "word") return (character >= "A" && character <= "Z")
+    || (character >= "a" && character <= "z")
+    || (character >= "0" && character <= "9")
+    || character === "_";
+  return /\s/u.test(character);
 }
 
-function parsePattern(pattern: string): PatternToken[] {
-  let source = pattern;
-  if (source.startsWith("^")) source = source.slice(1);
-  if (source.endsWith("$") && !source.endsWith("\\$")) source = source.slice(0, -1);
+function classMemberMatches(member: ClassMember, character: string): boolean {
+  if (member.kind === "literal") return character === member.value;
+  if (member.kind === "range") {
+    const codePoint = character.codePointAt(0);
+    return codePoint !== undefined && codePoint >= member.first && codePoint <= member.last;
+  }
+  const matched = categoryMatches(member.kind, character);
+  return member.negated ? !matched : matched;
+}
+
+function characterMatches(matcher: CharacterMatcher, character: string): boolean {
+  if (matcher.kind === "literal") return character === matcher.value;
+  if (matcher.kind === "any") return !["\n", "\r", "\u2028", "\u2029"].includes(character);
+  if (matcher.kind === "class") {
+    const matched = matcher.members.some((member) => classMemberMatches(member, character));
+    return matcher.negated ? !matched : matched;
+  }
+  const matched = categoryMatches(matcher.kind, character);
+  return matcher.negated ? !matched : matched;
+}
+
+function escapedMatcher(escape: string, inClass: boolean): CharacterMatcher | undefined {
+  if (["d", "D", "w", "W", "s", "S"].includes(escape)) {
+    const lower = escape.toLowerCase() as "d" | "w" | "s";
+    const kind = lower === "d" ? "digit" : lower === "w" ? "word" : "space";
+    return { kind, negated: escape !== lower };
+  }
+  const controls: Record<string, string> = { n: "\n", r: "\r", t: "\t", f: "\f", v: "\v", "0": "\0" };
+  if (Object.hasOwn(controls, escape)) return { kind: "literal", value: controls[escape] as string };
+  if (inClass && escape === "b") return { kind: "literal", value: "\b" };
+  const identityEscapes = inClass ? "/^$\\.*+?()[]{}|-" : "/^$\\.*+?()[]{}|";
+  if (identityEscapes.includes(escape)) return { kind: "literal", value: escape };
+  return undefined;
+}
+
+function classMemberFromMatcher(matcher: CharacterMatcher): ClassMember {
+  if (matcher.kind === "literal") return matcher;
+  if (matcher.kind === "digit" || matcher.kind === "word" || matcher.kind === "space") return matcher;
+  throw new Error("pattern character class contains an unsupported nested matcher");
+}
+
+function parseCharacterClass(source: string, start: number): { matcher: CharacterMatcher; value: string; next: number } {
+  let index = start + 1;
+  let negated = false;
+  if (source[index] === "^") { negated = true; index += 1; }
+  const members: ClassMember[] = [];
+  let closed = false;
+  while (index < source.length) {
+    if (source[index] === "]") { closed = true; index += 1; break; }
+    let matcher: CharacterMatcher;
+    let next: number;
+    if (source[index] === "\\") {
+      const escaped = source[index + 1];
+      if (escaped === "0" && /[0-9]/u.test(source[index + 2] ?? "")) throw new Error("pattern contains an invalid decimal escape");
+      const parsed = escaped === undefined ? undefined : escapedMatcher(escaped, true);
+      if (parsed === undefined) throw new Error("pattern contains an unsupported character-class escape");
+      matcher = parsed;
+      next = index + 2;
+    } else {
+      const codePoint = source.codePointAt(index);
+      if (codePoint === undefined) throw new Error("pattern contains an invalid character class");
+      const value = String.fromCodePoint(codePoint);
+      if (value === "[") throw new Error("pattern contains a nested character class");
+      matcher = { kind: "literal", value };
+      next = index + value.length;
+    }
+    const startsRange = source[next] === "-" && source[next + 1] !== "]" && next + 1 < source.length;
+    if (startsRange && matcher.kind !== "literal") throw new Error("pattern range endpoints must be literal characters");
+    if (matcher.kind === "literal" && startsRange) {
+      const first = matcher.value.codePointAt(0) as number;
+      const endIndex = next + 1;
+      let lastValue: string;
+      let rangeNext: number;
+      if (source[endIndex] === "\\") {
+        const escaped = source[endIndex + 1];
+        if (escaped === "0" && /[0-9]/u.test(source[endIndex + 2] ?? "")) throw new Error("pattern contains an invalid decimal escape");
+        const parsed = escaped === undefined ? undefined : escapedMatcher(escaped, true);
+        if (parsed === undefined || parsed.kind !== "literal") throw new Error("pattern range endpoints must be literal characters");
+        lastValue = parsed.value;
+        rangeNext = endIndex + 2;
+      } else {
+        const codePoint = source.codePointAt(endIndex);
+        if (codePoint === undefined) throw new Error("pattern contains an incomplete character-class range");
+        lastValue = String.fromCodePoint(codePoint);
+        if (lastValue === "[") throw new Error("pattern range endpoints must be literal characters");
+        rangeNext = endIndex + lastValue.length;
+      }
+      const last = lastValue.codePointAt(0) as number;
+      if (first > last) throw new Error("pattern contains a descending character-class range");
+      members.push({ kind: "range", first, last });
+      index = rangeNext;
+    } else {
+      members.push(classMemberFromMatcher(matcher));
+      index = next;
+    }
+  }
+  if (!closed || members.length === 0) throw new Error("pattern contains an invalid or empty character class");
+  const compiled: CharacterMatcher = { kind: "class", negated, members };
+  const value = CLASS_WITNESS_CANDIDATES.find((candidate) => characterMatches(compiled, candidate));
+  if (value === undefined) throw new Error("pattern character class has no deterministic ASCII witness");
+  return { matcher: compiled, value, next: index };
+}
+
+function compilePattern(pattern: string): PatternProgram {
+  if (unicodeLength(pattern) > 256) throw new Error("pattern is longer than 256 Unicode code points");
+  if (!pattern.startsWith("^") || !pattern.endsWith("$") || pattern.length < 2) {
+    throw new Error("pattern must use explicit ^ and $ whole-string anchors");
+  }
+  const source = pattern.slice(1, -1);
   const tokens: PatternToken[] = [];
   let variableRepetitions = 0;
   for (let index = 0; index < source.length;) {
@@ -236,24 +354,27 @@ function parsePattern(pattern: string): PatternToken[] {
     if (codePoint === undefined) break;
     const character = String.fromCodePoint(codePoint);
     let tokenValue: string;
+    let matcher: CharacterMatcher;
     if (["(", ")", "|", "^", "$"].includes(character)) throw new Error("pattern uses unsupported grouping, alternation, or anchors");
+    if ("*+?{}".includes(character)) throw new Error("pattern contains a stray or stacked quantifier");
     if (character === "[") {
-      let end = index + 1;
-      for (; end < source.length; end += 1) if (source[end] === "]" && source[end - 1] !== "\\") break;
-      if (end >= source.length) throw new Error("pattern contains an unterminated character class");
-      tokenValue = classValue(source.slice(index + 1, end));
-      index = end + 1;
+      const parsed = parseCharacterClass(source, index);
+      tokenValue = parsed.value;
+      matcher = parsed.matcher;
+      index = parsed.next;
     } else if (character === "\\") {
       const escaped = source[index + 1];
       if (escaped === undefined) throw new Error("pattern ends with an incomplete escape");
-      if (escaped === "d") tokenValue = "0";
-      else if (escaped === "w") tokenValue = "a";
-      else if (escaped === "s") tokenValue = " ";
-      else if ([".", "-", "_", "/", "\\", "+", "*", "?", "!", ":"].includes(escaped)) tokenValue = escaped;
-      else throw new Error(`pattern escape \\${escaped} is unsupported for deterministic generation`);
+      if (escaped === "0" && /[0-9]/u.test(source[index + 2] ?? "")) throw new Error("pattern contains an invalid decimal escape");
+      const parsed = escapedMatcher(escaped, false);
+      if (parsed === undefined) throw new Error(`pattern escape \\${escaped} is unsupported for deterministic generation`);
+      matcher = parsed;
+      tokenValue = CLASS_WITNESS_CANDIDATES.find((candidate) => characterMatches(matcher, candidate)) ?? " ";
+      if (!characterMatches(matcher, tokenValue)) throw new Error(`pattern escape \\${escaped} has no deterministic ASCII witness`);
       index += 2;
     } else {
       tokenValue = character === "." ? "a" : character;
+      matcher = character === "." ? { kind: "any" } : { kind: "literal", value: character };
       index += character.length;
     }
     let minimum = 1;
@@ -273,16 +394,16 @@ function parsePattern(pattern: string): PatternToken[] {
       if (minimum !== maximum) variableRepetitions += 1;
       index += match[0].length;
     }
+    if (["*", "+", "?", "{"].includes(source[index] ?? "")) throw new Error("pattern contains a stacked quantifier");
     if (variableRepetitions > 1) throw new Error("pattern contains more than one variable repetition");
-    tokens.push({ value: tokenValue, minimum, maximum });
+    tokens.push({ value: tokenValue, matcher, minimum, maximum });
   }
-  return tokens;
-}
-
-function safePattern(pattern: string): RegExp {
-  if (unicodeLength(pattern) > 256) throw new Error("pattern is longer than 256 Unicode code points");
-  parsePattern(pattern);
-  return new RegExp(pattern, "u");
+  const minimumLength = tokens.reduce((total, token) => boundedAdd(total, token.minimum, MAX_PATTERN_INPUT_LENGTH), 0);
+  const maximumLength = tokens.reduce((total, token) => boundedAdd(total, token.maximum, MAX_PATTERN_INPUT_LENGTH), 0);
+  if (minimumLength > MAX_PATTERN_INPUT_LENGTH || maximumLength > MAX_PATTERN_INPUT_LENGTH) {
+    throw new Error(`pattern match length exceeds ${MAX_PATTERN_INPUT_LENGTH} Unicode code points`);
+  }
+  return { tokens, minimumLength, maximumLength };
 }
 
 function buildPatternValue(tokens: readonly PatternToken[], targetLength: number): string | undefined {
@@ -299,22 +420,61 @@ function buildPatternValue(tokens: readonly PatternToken[], targetLength: number
     length += add * tokenLength;
   }
   if (length !== targetLength) return undefined;
-  return tokens.map((token, index) => token.value.repeat(counts[index] ?? 0)).join("");
+  let value = "";
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    const count = counts[index] ?? 0;
+    if (token === undefined || count < 0 || count > MAX_GENERATED_CARDINALITY) return undefined;
+    for (let repetition = 0; repetition < count; repetition += 1) value += token.value;
+  }
+  return value;
+}
+
+function patternMatches(program: PatternProgram, value: string): boolean {
+  const characters = [...value];
+  if (characters.length < program.minimumLength || characters.length > program.maximumLength) return false;
+  const variable = program.tokens.findIndex((token) => token.minimum !== token.maximum);
+  const variableCount = variable === -1
+    ? 0
+    : characters.length - program.tokens.reduce((total, token, index) => total + (index === variable ? 0 : token.minimum), 0);
+  if (variable !== -1) {
+    const token = program.tokens[variable];
+    if (token === undefined || variableCount < token.minimum || variableCount > token.maximum) return false;
+  }
+  let cursor = 0;
+  for (let index = 0; index < program.tokens.length; index += 1) {
+    const token = program.tokens[index];
+    if (token === undefined) return false;
+    const count = index === variable ? variableCount : token.minimum;
+    for (let repetition = 0; repetition < count; repetition += 1) {
+      const character = characters[cursor];
+      if (character === undefined || !characterMatches(token.matcher, character)) return false;
+      cursor += 1;
+    }
+  }
+  return cursor === characters.length;
+}
+
+function boundedAsciiWitness(length: number, label: string): string {
+  if (!Number.isSafeInteger(length) || length < 0 || length > MAX_GENERATED_CARDINALITY) {
+    throw new Error(`${label} is outside deterministic generation limits`);
+  }
+  return ASCII_WITNESS.slice(0, length);
 }
 
 export function synthesizeString(schema: JsonSchema, edge: "minimum" | "maximum" = "minimum"): string {
   const minimum = schema.minLength ?? 0;
-  const maximum = schema.maxLength ?? Math.max(minimum, 1);
-  if (schema.pattern === undefined) return "a".repeat(edge === "minimum" ? minimum : maximum);
-  const expression = safePattern(schema.pattern);
-  const tokens = parsePattern(schema.pattern);
-  const tokenMinimum = tokens.reduce((total, token) => total + unicodeLength(token.value) * token.minimum, 0);
-  const lower = Math.max(minimum, tokenMinimum);
-  const preferred = edge === "maximum" ? maximum : lower;
-  for (let length = preferred; length >= lower; length -= 1) {
-    const value = buildPatternValue(tokens, length);
-    if (value !== undefined && expression.test(value)) return value;
-  }
+  const preferredMaximum = schema.maxLength ?? Math.max(minimum, 1);
+  if (!Number.isSafeInteger(minimum) || minimum < 0 || minimum > MAX_GENERATED_CARDINALITY) throw new Error("minLength is outside deterministic generation limits");
+  if (!Number.isSafeInteger(preferredMaximum) || preferredMaximum < minimum || preferredMaximum > MAX_GENERATED_CARDINALITY) throw new Error("maxLength is outside deterministic generation limits");
+  if (schema.pattern === undefined) return boundedAsciiWitness(edge === "minimum" ? minimum : preferredMaximum, `${edge} string length`);
+  const program = compilePattern(schema.pattern);
+  const lower = Math.max(minimum, program.minimumLength);
+  const upper = Math.min(schema.maxLength ?? MAX_GENERATED_CARDINALITY, program.maximumLength);
+  if (lower > upper) throw new Error(`pattern ${schema.pattern} has no deterministic witness within its length bounds`);
+  const length = edge === "maximum" ? Math.min(upper, Math.max(lower, preferredMaximum)) : lower;
+  const value = buildPatternValue(program.tokens, length);
+  if (value !== undefined && patternMatches(program, value)) return value;
   throw new Error(`pattern ${schema.pattern} has no deterministic witness within its length bounds`);
 }
 
@@ -357,7 +517,7 @@ export function validate(schema: JsonSchema, value: unknown, path = "$" ): Valid
       if (length > MAX_PATTERN_INPUT_LENGTH) {
         issues.push({ path, keyword: "pattern", message: `value exceeds the ${MAX_PATTERN_INPUT_LENGTH}-code-point pattern evaluation limit` });
       } else {
-        try { if (!safePattern(schema.pattern).test(value)) issues.push({ path, keyword: "pattern", message: `value does not match ${schema.pattern}` }); }
+        try { if (!patternMatches(compilePattern(schema.pattern), value)) issues.push({ path, keyword: "pattern", message: `value does not match ${schema.pattern}` }); }
         catch { issues.push({ path, keyword: "pattern", message: "manifest contains an unsupported regex" }); }
       }
     }
@@ -449,7 +609,7 @@ export function assertSupportedManifest(manifest: ToolManifest): void {
     if ((schema.properties !== undefined || schema.required !== undefined || schema.additionalProperties !== undefined) && schema.type !== "object") throw new Error(`${path} object keywords require object type`);
     if (schema.pattern !== undefined) {
       if (typeof schema.pattern !== "string") throw new Error(`${path}.pattern must be a string`);
-      try { safePattern(schema.pattern); synthesizeString(schema); }
+      try { compilePattern(schema.pattern); synthesizeString(schema); }
       catch (error: unknown) { throw new Error(`${path}.pattern is unsupported: ${error instanceof Error ? error.message : String(error)}`); }
     }
     if (schema.properties !== undefined && !isRecord(schema.properties)) throw new Error(`${path}.properties must be an object`);

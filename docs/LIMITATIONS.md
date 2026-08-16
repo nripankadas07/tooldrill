@@ -3,7 +3,13 @@
 - The bundled executor is an offline, in-process defective simulation; no production MCP server is contacted.
 - The validator implements a strict JSON Schema subset, not every draft keyword or reference mechanism. Unsupported keywords are rejected rather than ignored.
 - `$ref`, `oneOf`, `anyOf`, `allOf`, grouping/alternation in generated regex witnesses, conditional schemas, formats, recursive references, and unevaluated properties are not supported in v1.
-- Pattern generation supports flat literals, dot/basic escapes, character classes with a deterministic ASCII witness, anchors, fixed repetitions, and at most one variable `?`, `*`, `+`, or ranged repetition. This conservative subset prevents ambiguous-repetition backtracking; values evaluated against a pattern are capped at 100,000 Unicode code points. A valid regex outside the subset is rejected explicitly.
+- Pattern generation and validation require explicit `^...$` whole-string anchors
+  and support flat literals, dot/basic escapes, character classes with a
+  deterministic ASCII witness, fixed repetitions, and at most one variable `?`,
+  `*`, `+`, or ranged repetition. Manifest text is parsed into a bounded matcher,
+  not dynamically compiled as a JavaScript regular expression. Values are capped
+  at 100,000 Unicode code points; a valid regex outside this conservative subset
+  is rejected explicitly.
 - Generated string/array cardinalities are capped at 10,000, individual JSON literals and deterministic witnesses at 50,000 nodes/64 levels, individual strings at 100,000 Unicode code points, and all strings within one JSON value at 250,000 code points. A manifest may contain at most 250,000 literal nodes and 1,000,000 literal-string code points across `const`/`enum`; actual generated case arguments are capped at 1,000,000 aggregate nodes. Schema graphs are capped at 512 nodes/32 levels, object widths at 128 properties, enums at 256 values, generated cases at 2,048, and numeric bounds at JavaScript's safe-integer magnitude.
 - Generated cases are deterministic and targeted, not exhaustive fuzzing.
 - Artifact publication rejects symlinks in every existing output-path component, rechecks directory identities, stages complete sets, reconciles ambiguous rename failures, and rolls back on a publish failure. Cooperative writers serialize through a bounded five-second `.artifact-write.lock`; a crash or incomplete recovery leaves that lock in place so later writers fail closed. After verifying that no writer is active, an operator must inspect any `.artifact-stage-*` recovery directory before manually removing a stale lock. Non-cooperating processes are not serialized. Node does not expose portable directory-file-descriptor-relative rename APIs, so a process that can concurrently replace trusted ancestor directories may still race between identity checks and filesystem operations; choose an output tree not writable by an attacker.
