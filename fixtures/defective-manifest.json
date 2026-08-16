@@ -1,0 +1,26 @@
+{
+  "version": "tooldrill.manifest/v1",
+  "name": "temperature.convert",
+  "description": "Offline defective fixture used to prove ToolDrill findings.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["temperature", "from", "to", "label"],
+    "properties": {
+      "temperature": { "type": "number", "minimum": -273.15, "maximum": 1000 },
+      "from": { "type": "string", "enum": ["C", "F", "K"] },
+      "to": { "type": "string", "enum": ["C", "F", "K"] },
+      "label": { "type": "string", "minLength": 1, "maxLength": 12, "pattern": "^[A-Za-z]+$" }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["value", "unit", "traceId"],
+    "properties": {
+      "value": { "type": "number" },
+      "unit": { "type": "string", "enum": ["C", "F", "K"] },
+      "traceId": { "type": "string", "pattern": "^trace-[0-9]+$" }
+    }
+  }
+}

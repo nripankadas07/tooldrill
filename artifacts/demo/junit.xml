@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?><testsuite name="temperature.convert" tests="23" failures="19"><testcase classname="tooldrill.valid" name="valid.baseline"><system-out>case:valid.baseline
+input-validation:0
+dispatch:valid.baseline
+attempt:0
+respond:ok
+output-validation:0</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.from.required"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.from.required
+input-validation:1
+first:dispatch:invalid.from.required
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.from.required
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.label.required"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.label.required
+input-validation:1
+first:dispatch:invalid.label.required
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.label.required
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.temperature.required"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.temperature.required
+input-validation:1
+first:dispatch:invalid.temperature.required
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.temperature.required
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.to.required"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.to.required
+input-validation:1
+first:dispatch:invalid.to.required
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.to.required
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.root.additional-property"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.root.additional-property
+input-validation:1
+first:dispatch:invalid.root.additional-property
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.root.additional-property
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.valid" name="valid.from.maximum"><system-out>case:valid.from.maximum
+input-validation:0
+dispatch:valid.from.maximum
+attempt:0
+respond:ok
+output-validation:0</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.from.type"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.from.type
+input-validation:1
+first:dispatch:invalid.from.type
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.from.type
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.from.enum"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.from.enum
+input-validation:1
+first:dispatch:invalid.from.enum
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.from.enum
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.valid" name="valid.label.maximum"><system-out>case:valid.label.maximum
+input-validation:0
+dispatch:valid.label.maximum
+attempt:0
+respond:ok
+output-validation:0</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.label.type"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.label.type
+input-validation:1
+first:dispatch:invalid.label.type
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.label.type
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.label.too-short"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.label.too-short
+input-validation:2
+first:dispatch:invalid.label.too-short
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.label.too-short
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.label.too-long"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.label.too-long
+input-validation:1
+first:dispatch:invalid.label.too-long
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.label.too-long
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.label.pattern"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.label.pattern
+input-validation:1
+first:dispatch:invalid.label.pattern
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.label.pattern
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.valid" name="valid.temperature.maximum"><failure message="response-schema">response-schema: required property is missing at $.traceId
+response-schema: value is not in enum at $.unit</failure><system-out>case:valid.temperature.maximum
+input-validation:0
+dispatch:valid.temperature.maximum
+attempt:0
+fault:invalid-response-schema
+output-validation:2</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.temperature.type"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.temperature.type
+input-validation:1
+first:dispatch:invalid.temperature.type
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.temperature.type
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.temperature.below-minimum"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.temperature.below-minimum
+input-validation:1
+first:dispatch:invalid.temperature.below-minimum
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.temperature.below-minimum
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.temperature.above-maximum"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.temperature.above-maximum
+input-validation:1
+first:dispatch:invalid.temperature.above-maximum
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.temperature.above-maximum
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.valid" name="valid.to.maximum"><system-out>case:valid.to.maximum
+input-validation:0
+dispatch:valid.to.maximum
+attempt:0
+respond:ok
+output-validation:0</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.to.type"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.to.type
+input-validation:1
+first:dispatch:invalid.to.type
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.to.type
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.invalid" name="invalid.to.enum"><failure message="stable-error">stable-error: repeated invalid input did not produce the same error code and message</failure><system-out>case:invalid.to.enum
+input-validation:1
+first:dispatch:invalid.to.enum
+first:attempt:0
+first:reject:INVALID_INPUT_A
+second:dispatch:invalid.to.enum
+second:attempt:1
+second:reject:INVALID_INPUT_B</system-out></testcase><testcase classname="tooldrill.timeout" name="protocol.timeout"><failure message="timeout">timeout: server returned ok after 30ms instead of timing out</failure><system-out>case:protocol.timeout
+input-validation:0
+dispatch:protocol.timeout
+attempt:0
+fault:timeout-ignored
+elapsed:30</system-out></testcase><testcase classname="tooldrill.cancellation" name="protocol.cancellation"><failure message="cancellation">cancellation: server returned ok for a pre-cancelled call</failure><system-out>case:protocol.cancellation
+input-validation:0
+dispatch:protocol.cancellation
+attempt:0
+fault:cancellation-ignored</system-out></testcase></testsuite>

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+artifacts/*
+!artifacts/demo/
+!artifacts/demo/**
+coverage/
+*.log
+.DS_Store

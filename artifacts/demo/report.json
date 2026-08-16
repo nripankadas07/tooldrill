@@ -1,0 +1,795 @@
+{
+  "version": "tooldrill.report/v1",
+  "manifest": {
+    "version": "tooldrill.manifest/v1",
+    "name": "temperature.convert",
+    "uri": "fixtures/defective-manifest.json"
+  },
+  "deterministic": true,
+  "totals": {
+    "cases": 23,
+    "passed": 4,
+    "failed": 19
+  },
+  "results": [
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "valid.baseline",
+      "mode": "valid",
+      "status": "pass",
+      "arguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": -273.15,
+        "to": "C"
+      },
+      "inputIssues": [],
+      "findings": [],
+      "transcript": [
+        "case:valid.baseline",
+        "input-validation:0",
+        "dispatch:valid.baseline",
+        "attempt:0",
+        "respond:ok",
+        "output-validation:0"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.from.required",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "label": "a",
+        "temperature": -273.15,
+        "to": "C"
+      },
+      "inputIssues": [
+        {
+          "path": "$.from",
+          "keyword": "required",
+          "message": "required property is missing"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.from.required",
+        "input-validation:1",
+        "first:dispatch:invalid.from.required",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.from.required",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.label.required",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "temperature": -273.15,
+        "to": "C"
+      },
+      "inputIssues": [
+        {
+          "path": "$.label",
+          "keyword": "required",
+          "message": "required property is missing"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.label.required",
+        "input-validation:1",
+        "first:dispatch:invalid.label.required",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.label.required",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.temperature.required",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "a",
+        "to": "C"
+      },
+      "inputIssues": [
+        {
+          "path": "$.temperature",
+          "keyword": "required",
+          "message": "required property is missing"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.temperature.required",
+        "input-validation:1",
+        "first:dispatch:invalid.temperature.required",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.temperature.required",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.to.required",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": -273.15
+      },
+      "inputIssues": [
+        {
+          "path": "$.to",
+          "keyword": "required",
+          "message": "required property is missing"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.to.required",
+        "input-validation:1",
+        "first:dispatch:invalid.to.required",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.to.required",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.root.additional-property",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": -273.15,
+        "to": "C",
+        "unexpected": true
+      },
+      "inputIssues": [
+        {
+          "path": "$.unexpected",
+          "keyword": "additionalProperties",
+          "message": "unexpected property"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.root.additional-property",
+        "input-validation:1",
+        "first:dispatch:invalid.root.additional-property",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.root.additional-property",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ],
+      "shrunkArguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": -273.15,
+        "to": "C",
+        "unexpected": false
+      }
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "valid.from.maximum",
+      "mode": "valid",
+      "status": "pass",
+      "arguments": {
+        "from": "K",
+        "label": "a",
+        "temperature": -273.15,
+        "to": "C"
+      },
+      "inputIssues": [],
+      "findings": [],
+      "transcript": [
+        "case:valid.from.maximum",
+        "input-validation:0",
+        "dispatch:valid.from.maximum",
+        "attempt:0",
+        "respond:ok",
+        "output-validation:0"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.from.type",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": 7,
+        "label": "a",
+        "temperature": -273.15,
+        "to": "C"
+      },
+      "inputIssues": [
+        {
+          "path": "$.from",
+          "keyword": "type",
+          "message": "expected string, received number"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.from.type",
+        "input-validation:1",
+        "first:dispatch:invalid.from.type",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.from.type",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ],
+      "shrunkArguments": {
+        "from": 0,
+        "label": "a",
+        "temperature": -273.15,
+        "to": "C"
+      }
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.from.enum",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "",
+        "label": "a",
+        "temperature": -273.15,
+        "to": "C"
+      },
+      "inputIssues": [
+        {
+          "path": "$.from",
+          "keyword": "enum",
+          "message": "value is not in enum"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.from.enum",
+        "input-validation:1",
+        "first:dispatch:invalid.from.enum",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.from.enum",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "valid.label.maximum",
+      "mode": "valid",
+      "status": "pass",
+      "arguments": {
+        "from": "C",
+        "label": "aaaaaaaaaaaa",
+        "temperature": -273.15,
+        "to": "C"
+      },
+      "inputIssues": [],
+      "findings": [],
+      "transcript": [
+        "case:valid.label.maximum",
+        "input-validation:0",
+        "dispatch:valid.label.maximum",
+        "attempt:0",
+        "respond:ok",
+        "output-validation:0"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.label.type",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": 7,
+        "temperature": -273.15,
+        "to": "C"
+      },
+      "inputIssues": [
+        {
+          "path": "$.label",
+          "keyword": "type",
+          "message": "expected string, received number"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.label.type",
+        "input-validation:1",
+        "first:dispatch:invalid.label.type",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.label.type",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ],
+      "shrunkArguments": {
+        "from": "C",
+        "label": 0,
+        "temperature": -273.15,
+        "to": "C"
+      }
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.label.too-short",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "",
+        "temperature": -273.15,
+        "to": "C"
+      },
+      "inputIssues": [
+        {
+          "path": "$.label",
+          "keyword": "minLength",
+          "message": "length 0 is below 1"
+        },
+        {
+          "path": "$.label",
+          "keyword": "pattern",
+          "message": "value does not match ^[A-Za-z]+$"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.label.too-short",
+        "input-validation:2",
+        "first:dispatch:invalid.label.too-short",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.label.too-short",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.label.too-long",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "aaaaaaaaaaaaa",
+        "temperature": -273.15,
+        "to": "C"
+      },
+      "inputIssues": [
+        {
+          "path": "$.label",
+          "keyword": "maxLength",
+          "message": "length 13 exceeds 12"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.label.too-long",
+        "input-validation:1",
+        "first:dispatch:invalid.label.too-long",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.label.too-long",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ],
+      "shrunkArguments": {
+        "from": "C",
+        "label": "",
+        "temperature": -273.15,
+        "to": "C"
+      }
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.label.pattern",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "\n",
+        "temperature": -273.15,
+        "to": "C"
+      },
+      "inputIssues": [
+        {
+          "path": "$.label",
+          "keyword": "pattern",
+          "message": "value does not match ^[A-Za-z]+$"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.label.pattern",
+        "input-validation:1",
+        "first:dispatch:invalid.label.pattern",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.label.pattern",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ],
+      "shrunkArguments": {
+        "from": "C",
+        "label": "",
+        "temperature": -273.15,
+        "to": "C"
+      }
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "valid.temperature.maximum",
+      "mode": "valid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": 1000,
+        "to": "C"
+      },
+      "inputIssues": [],
+      "findings": [
+        {
+          "ruleId": "response-schema",
+          "message": "required property is missing",
+          "path": "$.traceId"
+        },
+        {
+          "ruleId": "response-schema",
+          "message": "value is not in enum",
+          "path": "$.unit"
+        }
+      ],
+      "transcript": [
+        "case:valid.temperature.maximum",
+        "input-validation:0",
+        "dispatch:valid.temperature.maximum",
+        "attempt:0",
+        "fault:invalid-response-schema",
+        "output-validation:2"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.temperature.type",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": "not-a-number",
+        "to": "C"
+      },
+      "inputIssues": [
+        {
+          "path": "$.temperature",
+          "keyword": "type",
+          "message": "expected number, received string"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.temperature.type",
+        "input-validation:1",
+        "first:dispatch:invalid.temperature.type",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.temperature.type",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ],
+      "shrunkArguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": "",
+        "to": "C"
+      }
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.temperature.below-minimum",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": -274.15,
+        "to": "C"
+      },
+      "inputIssues": [
+        {
+          "path": "$.temperature",
+          "keyword": "minimum",
+          "message": "-274.15 is below -273.15"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.temperature.below-minimum",
+        "input-validation:1",
+        "first:dispatch:invalid.temperature.below-minimum",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.temperature.below-minimum",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.temperature.above-maximum",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": 1001,
+        "to": "C"
+      },
+      "inputIssues": [
+        {
+          "path": "$.temperature",
+          "keyword": "maximum",
+          "message": "1001 exceeds 1000"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.temperature.above-maximum",
+        "input-validation:1",
+        "first:dispatch:invalid.temperature.above-maximum",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.temperature.above-maximum",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "valid.to.maximum",
+      "mode": "valid",
+      "status": "pass",
+      "arguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": -273.15,
+        "to": "K"
+      },
+      "inputIssues": [],
+      "findings": [],
+      "transcript": [
+        "case:valid.to.maximum",
+        "input-validation:0",
+        "dispatch:valid.to.maximum",
+        "attempt:0",
+        "respond:ok",
+        "output-validation:0"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.to.type",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": -273.15,
+        "to": 7
+      },
+      "inputIssues": [
+        {
+          "path": "$.to",
+          "keyword": "type",
+          "message": "expected string, received number"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.to.type",
+        "input-validation:1",
+        "first:dispatch:invalid.to.type",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.to.type",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ],
+      "shrunkArguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": -273.15,
+        "to": 0
+      }
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "invalid.to.enum",
+      "mode": "invalid",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": -273.15,
+        "to": ""
+      },
+      "inputIssues": [
+        {
+          "path": "$.to",
+          "keyword": "enum",
+          "message": "value is not in enum"
+        }
+      ],
+      "findings": [
+        {
+          "ruleId": "stable-error",
+          "message": "repeated invalid input did not produce the same error code and message"
+        }
+      ],
+      "transcript": [
+        "case:invalid.to.enum",
+        "input-validation:1",
+        "first:dispatch:invalid.to.enum",
+        "first:attempt:0",
+        "first:reject:INVALID_INPUT_A",
+        "second:dispatch:invalid.to.enum",
+        "second:attempt:1",
+        "second:reject:INVALID_INPUT_B"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "protocol.timeout",
+      "mode": "timeout",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": -273.15,
+        "to": "C"
+      },
+      "inputIssues": [],
+      "findings": [
+        {
+          "ruleId": "timeout",
+          "message": "server returned ok after 30ms instead of timing out"
+        }
+      ],
+      "transcript": [
+        "case:protocol.timeout",
+        "input-validation:0",
+        "dispatch:protocol.timeout",
+        "attempt:0",
+        "fault:timeout-ignored",
+        "elapsed:30"
+      ]
+    },
+    {
+      "version": "tooldrill.result/v1",
+      "caseId": "protocol.cancellation",
+      "mode": "cancellation",
+      "status": "fail",
+      "arguments": {
+        "from": "C",
+        "label": "a",
+        "temperature": -273.15,
+        "to": "C"
+      },
+      "inputIssues": [],
+      "findings": [
+        {
+          "ruleId": "cancellation",
+          "message": "server returned ok for a pre-cancelled call"
+        }
+      ],
+      "transcript": [
+        "case:protocol.cancellation",
+        "input-validation:0",
+        "dispatch:protocol.cancellation",
+        "attempt:0",
+        "fault:cancellation-ignored"
+      ]
+    }
+  ]
+}

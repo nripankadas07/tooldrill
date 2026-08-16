@@ -1,0 +1,8 @@
+{
+  "version": "tooldrill.golden/v1",
+  "manifest": "temperature.convert",
+  "totals": { "cases": 23, "passed": 4, "failed": 19 },
+  "seededFindingRules": ["cancellation", "response-schema", "stable-error", "timeout"],
+  "hasShrunkCounterexample": true,
+  "artifacts": ["report.json", "report.md", "junit.xml", "results.sarif", "index.html"]
+}

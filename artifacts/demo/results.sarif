@@ -1,0 +1,523 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "ToolDrill",
+          "version": "0.1.0",
+          "informationUri": "https://github.com/nripankadas07/tooldrill",
+          "rules": [
+            {
+              "id": "cancellation",
+              "shortDescription": {
+                "text": "cancellation"
+              }
+            },
+            {
+              "id": "response-schema",
+              "shortDescription": {
+                "text": "response-schema"
+              }
+            },
+            {
+              "id": "stable-error",
+              "shortDescription": {
+                "text": "stable-error"
+              }
+            },
+            {
+              "id": "timeout",
+              "shortDescription": {
+                "text": "timeout"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.from.required: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.from.required"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.label.required: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.label.required"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.temperature.required: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.temperature.required"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.to.required: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.to.required"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.root.additional-property: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.root.additional-property"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.from.type: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.from.type"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.from.enum: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.from.enum"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.label.type: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.label.type"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.label.too-short: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.label.too-short"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.label.too-long: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.label.too-long"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.label.pattern: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.label.pattern"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "response-schema",
+          "level": "error",
+          "message": {
+            "text": "valid.temperature.maximum: required property is missing"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "$.traceId"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "response-schema",
+          "level": "error",
+          "message": {
+            "text": "valid.temperature.maximum: value is not in enum"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "$.unit"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.temperature.type: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.temperature.type"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.temperature.below-minimum: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.temperature.below-minimum"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.temperature.above-maximum: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.temperature.above-maximum"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.to.type: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.to.type"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "stable-error",
+          "level": "error",
+          "message": {
+            "text": "invalid.to.enum: repeated invalid input did not produce the same error code and message"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "invalid.to.enum"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "timeout",
+          "level": "error",
+          "message": {
+            "text": "protocol.timeout: server returned ok after 30ms instead of timing out"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "protocol.timeout"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "cancellation",
+          "level": "error",
+          "message": {
+            "text": "protocol.cancellation: server returned ok for a pre-cancelled call"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "fixtures/defective-manifest.json"
+                },
+                "region": {
+                  "startLine": 1
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "protocol.cancellation"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
