@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.1.1] - 2026-08-16
+
+### Changed
+
+- Clone and deeply freeze every generated case before adapter invocation, keeping authenticated inputs and repeated attempts isolated from a mutating server implementation.
+- Count JSON Schema `minLength` and `maxLength` in Unicode code points rather than UTF-16 code units.
+- Add practical width, enum, schema-node, generated-case, and aggregate-witness budgets that reject expensive manifests before case materialization.
+- Measure nested `const` and `enum` JSON values iteratively before cloning, rejecting cycles, sparse arrays, non-plain objects, non-finite numbers, excessive depth/nodes/strings, aggregate literal overload, and generated-case expansion with saturating budget arithmetic.
+- Reject patterns with multiple variable repetitions and bound regex evaluation inputs to 100,000 Unicode code points, preventing ambiguous-repetition backtracking in direct validation and response checks.
+- Reject trailing CLI operands and option-like positional values.
+- Reject sparse or extended `enum` and `required` arrays as non-JSON schema structure.
+- Publish reports through component-verified staging, directory/target identity rechecks, per-file atomic renames, and set-level backup/rollback. Output-path and target-file symlinks are rejected before any artifact is replaced.
+- Serialize cooperative artifact writers with a bounded fail-closed filesystem lock and reconcile rename-then-error outcomes by inode identity, preventing mixed concurrent bundles and restoring the full prior set after ambiguous failures.
+- Emit ToolDrill `0.1.1` in SARIF metadata.
+
+Manifests above the new resource budgets—including oversized or deeply nested `const`/`enum` literals—patterns outside the conservative non-ambiguous subset, oversized pattern inputs, and adapters that mutate invocation arguments can be rejected where `0.1.0` attempted to continue.
+
 ## [0.1.0] - 2026-08-16
 
 ### Added

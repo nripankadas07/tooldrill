@@ -1,4 +1,16 @@
-import { assertSupportedManifest, schemaValueEqual, synthesizeString, type JsonSchema, type ToolManifest, validate } from "./schema.js";
+import {
+  MAX_AGGREGATE_CASE_NODES,
+  MAX_GENERATED_CASES,
+  assertAggregateGeneratedCaseBudget,
+  assertGeneratedWitness,
+  assertSupportedManifest,
+  estimateGeneratedCaseCount,
+  schemaValueEqual,
+  synthesizeString,
+  type JsonSchema,
+  type ToolManifest,
+  validate,
+} from "./schema.js";
 
 export type CaseMode = "valid" | "invalid" | "timeout" | "cancellation";
 export interface DrillCase {
@@ -14,12 +26,17 @@ function without(schema: JsonSchema, key: keyof JsonSchema): JsonSchema {
   return copy;
 }
 
+function cloneGeneratedWitness<T>(value: T, label: string): T {
+  assertGeneratedWitness(value, label);
+  return structuredClone(value);
+}
+
 function valueFor(schema: JsonSchema, edge: "minimum" | "maximum" = "minimum"): unknown {
-  if (schema.const !== undefined) return structuredClone(schema.const);
+  if (Object.hasOwn(schema, "const")) return cloneGeneratedWitness(schema.const, "const witness");
   if (schema.enum !== undefined && schema.enum.length > 0) {
-    const valid = schema.enum.filter((entry) => validate(schema, entry).length === 0);
+    const valid = schema.enum.filter((entry) => validate(without(schema, "enum"), entry).length === 0);
     const selected = edge === "minimum" ? valid[0] : valid.at(-1);
-    if (selected !== undefined) return structuredClone(selected);
+    if (selected !== undefined) return cloneGeneratedWitness(selected, "enum witness");
   }
   switch (schema.type) {
     case "object": return Object.fromEntries(Object.keys(schema.properties ?? {}).sort().filter((key) => (schema.required ?? []).includes(key)).map((key) => [key, valueFor((schema.properties as Record<string, JsonSchema>)[key] as JsonSchema, edge)]));
@@ -65,8 +82,8 @@ function candidateViolating(schema: JsonSchema, keyword: "const" | "enum"): unkn
   if (keyword === "const" && schema.const !== undefined) candidates.unshift(constViolation(schema.const));
   for (const candidate of candidates) {
     if (validate(relaxed, candidate).length > 0) continue;
-    if (keyword === "const" && !schemaValueEqual(candidate, schema.const)) return structuredClone(candidate);
-    if (keyword === "enum" && !(schema.enum ?? []).some((entry) => schemaValueEqual(entry, candidate))) return structuredClone(candidate);
+    if (keyword === "const" && !schemaValueEqual(candidate, schema.const)) return cloneGeneratedWitness(candidate, "generated const-violation witness");
+    if (keyword === "enum" && !(schema.enum ?? []).some((entry) => schemaValueEqual(entry, candidate))) return cloneGeneratedWitness(candidate, "generated enum-violation witness");
   }
   return undefined;
 }
@@ -83,8 +100,12 @@ function invalidPatternValue(schema: JsonSchema): string | undefined {
 type ValuePath = Array<string | number>;
 
 function cloneWith(root: Record<string, unknown>, path: ValuePath, value: unknown): Record<string, unknown> {
-  const copy = structuredClone(root);
-  if (path.length === 0) return value as Record<string, unknown>;
+  const copy = cloneGeneratedWitness(root, `generated ${formatPath(path)} context`);
+  const replacement = cloneGeneratedWitness(value, `generated ${formatPath(path)} value`);
+  if (path.length === 0) {
+    assertGeneratedWitness(replacement, "generated root witness");
+    return replacement as Record<string, unknown>;
+  }
   let current: unknown = copy;
   for (let index = 0; index < path.length - 1; index += 1) {
     const segment = path[index];
@@ -93,14 +114,15 @@ function cloneWith(root: Record<string, unknown>, path: ValuePath, value: unknow
     else throw new Error(`cannot set generated path ${formatPath(path)}`);
   }
   const final = path.at(-1);
-  if (typeof final === "number" && Array.isArray(current)) current[final] = structuredClone(value);
-  else if (typeof final === "string" && current !== null && typeof current === "object") Object.defineProperty(current, final, { value: structuredClone(value), enumerable: true, configurable: true, writable: true });
+  if (typeof final === "number" && Array.isArray(current)) current[final] = replacement;
+  else if (typeof final === "string" && current !== null && typeof current === "object") Object.defineProperty(current, final, { value: replacement, enumerable: true, configurable: true, writable: true });
   else throw new Error(`cannot set generated path ${formatPath(path)}`);
+  assertGeneratedWitness(copy, `generated ${formatPath(path)} witness`);
   return copy;
 }
 
 function cloneWithout(root: Record<string, unknown>, path: ValuePath): Record<string, unknown> {
-  const copy = structuredClone(root);
+  const copy = cloneGeneratedWitness(root, `generated ${formatPath(path)} context`);
   let current: unknown = copy;
   for (let index = 0; index < path.length - 1; index += 1) {
     const segment = path[index];
@@ -113,6 +135,7 @@ function cloneWithout(root: Record<string, unknown>, path: ValuePath): Record<st
   const final = path.at(-1);
   if (typeof final === "number" && Array.isArray(current)) current.splice(final, 1);
   else if (typeof final === "string" && current !== null && typeof current === "object") delete (current as Record<string, unknown>)[final];
+  assertGeneratedWitness(copy, `generated ${formatPath(path)} omission witness`);
   return copy;
 }
 
@@ -127,12 +150,24 @@ function formatPath(path: ValuePath): string {
 export function generateCases(manifest: ToolManifest): DrillCase[] {
   assertSupportedManifest(manifest);
   const baseline = valueFor(manifest.inputSchema, "minimum") as Record<string, unknown>;
+  const baselineMeasurement = assertGeneratedWitness(baseline, "generated baseline witness");
+  assertAggregateGeneratedCaseBudget(estimateGeneratedCaseCount(manifest.inputSchema), baselineMeasurement.nodes);
   const baselineIssues = validate(manifest.inputSchema, baseline);
   if (baselineIssues.length > 0) throw new Error(`cannot generate a valid baseline: ${baselineIssues.map((issue) => `${issue.path} ${issue.keyword}`).join(", ")}`);
+  let aggregateCaseNodes = baselineMeasurement.nodes;
   const cases: DrillCase[] = [{ id: "valid.baseline", mode: "valid", description: "minimum valid object", arguments: baseline }];
   const ids = new Set(["valid.baseline"]);
+  const accountCase = (id: string, args: Record<string, unknown>): void => {
+    const nodes = assertGeneratedWitness(args, `generated case ${id}`).nodes;
+    aggregateCaseNodes = aggregateCaseNodes > MAX_AGGREGATE_CASE_NODES - nodes
+      ? MAX_AGGREGATE_CASE_NODES + 1
+      : aggregateCaseNodes + nodes;
+    if (aggregateCaseNodes > MAX_AGGREGATE_CASE_NODES) throw new Error(`generated cases exceed maximum aggregate witness size ${MAX_AGGREGATE_CASE_NODES}`);
+  };
   const add = (id: string, mode: "valid" | "invalid", description: string, args: Record<string, unknown>, keyword?: string): void => {
+    if (cases.length >= MAX_GENERATED_CASES) throw new Error(`generated case count exceeds ${MAX_GENERATED_CASES}`);
     if (ids.has(id)) throw new Error(`duplicate generated case id: ${id}`);
+    accountCase(id, args);
     const issues = validate(manifest.inputSchema, args);
     if (mode === "valid" && issues.length > 0) throw new Error(`generated valid case ${id} is invalid`);
     if (mode === "invalid" && (issues.length === 0 || (keyword !== undefined && !issues.some((issue) => issue.keyword === keyword)))) throw new Error(`generated invalid case ${id} does not violate ${keyword ?? "the schema"}`);
@@ -189,7 +224,7 @@ export function generateCases(manifest: ToolManifest): DrillCase[] {
     }
   };
 
-  const rootContext = structuredClone(baseline);
+  const rootContext = cloneGeneratedWitness(baseline, "generated root context");
   for (const required of [...(manifest.inputSchema.required ?? [])].sort()) add(`invalid.${required}.required`, "invalid", `${required} omitted`, cloneWithout(rootContext, [required]), "required");
   if (manifest.inputSchema.additionalProperties === false) {
     let unexpected = "unexpected";
@@ -197,6 +232,9 @@ export function generateCases(manifest: ToolManifest): DrillCase[] {
     add("invalid.root.additional-property", "invalid", "root has an unexpected property", cloneWith(rootContext, [unexpected], true), "additionalProperties");
   }
   for (const key of Object.keys(manifest.inputSchema.properties ?? {}).sort()) visitNode((manifest.inputSchema.properties as Record<string, JsonSchema>)[key] as JsonSchema, [key], rootContext);
+  if (cases.length + 2 > MAX_GENERATED_CASES) throw new Error(`generated case count exceeds ${MAX_GENERATED_CASES}`);
+  accountCase("protocol.timeout", baseline);
+  accountCase("protocol.cancellation", baseline);
   cases.push({ id: "protocol.timeout", mode: "timeout", description: "server must honor the declared timeout", arguments: baseline });
   cases.push({ id: "protocol.cancellation", mode: "cancellation", description: "server must honor pre-dispatch cancellation", arguments: baseline });
   return cases;

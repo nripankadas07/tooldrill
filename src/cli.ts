@@ -9,6 +9,7 @@ import type { ToolManifest } from "./schema.js";
 async function main(args: string[]): Promise<number> {
   const [command = "help", ...rest] = args;
   if (command === "demo") {
+    if (rest.length > 1 || rest[0]?.startsWith("-") === true) throw new Error("usage: tooldrill demo [OUT]");
     const out = rest[0] ?? "artifacts/demo";
     const report = await runDrill(defectiveManifest, new DefectiveFixtureServer(), { manifestUri: "fixtures/defective-manifest.json" });
     await writeArtifacts(out, report);
@@ -19,6 +20,7 @@ async function main(args: string[]): Promise<number> {
     return expectationSatisfied ? 0 : 1;
   }
   if (command === "fixture") {
+    if (rest.length < 1 || rest.length > 2 || rest.some((value) => value.startsWith("-"))) throw new Error("usage: tooldrill fixture MANIFEST.json [OUT]");
     const [manifestPath, out = "artifacts/fixture"] = rest;
     if (manifestPath === undefined) throw new Error("usage: tooldrill fixture MANIFEST.json [OUT]");
     const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as ToolManifest;
@@ -29,6 +31,7 @@ async function main(args: string[]): Promise<number> {
     console.log(JSON.stringify({ mode: "fixture-conformance", outcome: passed ? "passed" : "failed", findingsAreExpected: false, out, totals: report.totals }));
     return passed ? 0 : 1;
   }
+  if (["help", "--help", "-h"].includes(command) && rest.length > 0) throw new Error("help does not accept operands");
   console.log("tooldrill demo [OUT]\ntooldrill fixture MANIFEST.json [OUT]");
   return command === "help" || command === "--help" || command === "-h" ? 0 : 2;
 }

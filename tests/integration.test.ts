@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rename as fsRename, rmdir, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { spawnSync } from "node:child_process";
 import { DefectiveFixtureServer, defectiveManifest } from "../src/fixture.js";
 import { htmlReport, junitReport, markdownReport, sarifReport, writeArtifacts } from "../src/report.js";
+import { writeArtifactSet } from "../src/safe-output.js";
 import { runDrill } from "../src/runner.js";
 
 test("defective fixture proves every seeded conformance detector", async () => {
@@ -47,6 +48,23 @@ test("adapter exceptions become deterministic per-case findings without leaking 
   const malformed = await runDrill(defectiveManifest, { invoke: async () => ({ status: "timeout", elapsedMs: Number.NaN, transcript: [] }) as never });
   assert.equal(malformed.totals.failed, malformed.totals.cases);
   assert.ok(malformed.results.every((result) => result.findings.some((finding) => finding.ruleId === "server-error")));
+});
+
+test("mutating adapters cannot rewrite generated case evidence", async () => {
+  const report = await runDrill(defectiveManifest, {
+    invoke: async (args, context) => {
+      if (context.cancelled) return { status: "cancelled", elapsedMs: 0, transcript: [] };
+      if (context.timeoutMs !== undefined) return { status: "timeout", elapsedMs: context.timeoutMs, transcript: [] };
+      delete args.temperature;
+      return { status: "ok", value: {}, elapsedMs: 0, transcript: [] };
+    },
+  });
+  const baseline = report.results.find((result) => result.caseId === "valid.baseline");
+  assert.ok(baseline);
+  assert.equal(baseline.status, "fail");
+  assert.ok(baseline.findings.some((finding) => finding.ruleId === "server-error"));
+  assert.ok(Object.hasOwn(baseline.arguments, "temperature"));
+  assert.equal(baseline.inputIssues.length, 0);
 });
 
 test("reports escape Markdown and HTML, sanitize XML 1.0 controls, and preserve manifest URI", async () => {
@@ -99,4 +117,97 @@ test("CLI distinguishes the expected detector demo from a failing conformance co
   const unsupported = spawnSync(process.execPath, ["dist/src/cli.js", "fixture", unsupportedPath, join(fixtureOut, "other")], { encoding: "utf8" });
   assert.equal(unsupported.status, 1);
   assert.match(unsupported.stderr, /supports only the bundled defective manifest/u);
+});
+
+test("CLI rejects trailing operands and option-like output paths", () => {
+  for (const args of [["demo", "out", "extra"], ["demo", "--typo"], ["fixture", "manifest.json", "out", "extra"]]) {
+    const result = spawnSync(process.execPath, ["dist/src/cli.js", ...args], { encoding: "utf8" });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /usage:/u);
+  }
+});
+
+test("artifact publication rejects symlink and non-directory targets before writing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tooldrill-safe-output-"));
+  const victim = join(root, "victim.txt");
+  await writeFile(victim, "unchanged\n");
+  const report = await runDrill(defectiveManifest, new DefectiveFixtureServer());
+
+  const fileTarget = join(root, "file-target");
+  await mkdir(fileTarget);
+  await symlink(victim, join(fileTarget, "report.json"));
+  await assert.rejects(writeArtifacts(fileTarget, report), /regular file/u);
+  assert.equal(await readFile(victim, "utf8"), "unchanged\n");
+  assert.deepEqual(await readdir(fileTarget), ["report.json"]);
+
+  const directoryVictim = join(root, "directory-victim");
+  await mkdir(directoryVictim);
+  const linkedOutput = join(root, "linked-output");
+  await symlink(directoryVictim, linkedOutput);
+  await assert.rejects(writeArtifacts(linkedOutput, report), /symbolic-link component/u);
+  await assert.rejects(writeArtifacts(join(linkedOutput, "nested"), report), /symbolic-link component/u);
+  assert.deepEqual(await readdir(directoryVictim), []);
+
+  const parentFile = join(root, "not-a-directory");
+  await writeFile(parentFile, "x");
+  await assert.rejects(writeArtifacts(join(parentFile, "child"), report));
+
+  const transactional = join(root, "transactional");
+  await mkdir(transactional);
+  await writeFile(join(transactional, "one.txt"), "original\n");
+  let publishes = 0;
+  await assert.rejects(writeArtifactSet(transactional, { "one.txt": "replacement\n", "two.txt": "new\n" }, {
+    publishRename: async (source, destination) => {
+      publishes += 1;
+      if (publishes === 2) throw new Error("injected second publish failure");
+      await fsRename(source, destination);
+    },
+  }), /injected second publish failure/u);
+  assert.equal(publishes, 2);
+  assert.equal(await readFile(join(transactional, "one.txt"), "utf8"), "original\n");
+  assert.deepEqual(await readdir(transactional), ["one.txt"]);
+
+  const ambiguous = join(root, "ambiguous-rename");
+  await mkdir(ambiguous);
+  await writeFile(join(ambiguous, "one.txt"), "original-one\n");
+  await writeFile(join(ambiguous, "two.txt"), "original-two\n");
+  let completedRenames = 0;
+  await assert.rejects(writeArtifactSet(ambiguous, { "one.txt": "replacement-one\n", "two.txt": "replacement-two\n" }, {
+    publishRename: async (source, destination) => {
+      await fsRename(source, destination);
+      completedRenames += 1;
+      if (completedRenames === 2) throw new Error("injected post-rename failure");
+    },
+  }), /injected post-rename failure/u);
+  assert.equal(await readFile(join(ambiguous, "one.txt"), "utf8"), "original-one\n");
+  assert.equal(await readFile(join(ambiguous, "two.txt"), "utf8"), "original-two\n");
+  assert.deepEqual(await readdir(ambiguous), ["one.txt", "two.txt"]);
+
+  const concurrent = join(root, "concurrent-writers");
+  await mkdir(concurrent);
+  const pause = async (): Promise<void> => new Promise((resolvePause) => { setTimeout(resolvePause, 20); });
+  const writer = async (label: "A" | "B"): Promise<void> => {
+    let writerRenames = 0;
+    await writeArtifactSet(concurrent, { "one.txt": `${label}\n`, "two.txt": `${label}\n` }, {
+      publishRename: async (source, destination) => {
+        writerRenames += 1;
+        if (label === "A" && writerRenames === 1) await pause();
+        await fsRename(source, destination);
+        if (label === "B" && writerRenames === 1) await pause();
+      },
+    });
+  };
+  await Promise.all([writer("A"), writer("B")]);
+  const concurrentContents = await Promise.all(["one.txt", "two.txt"].map(async (name) => readFile(join(concurrent, name), "utf8")));
+  assert.equal(concurrentContents[0], concurrentContents[1]);
+  assert.ok(concurrentContents[0] === "A\n" || concurrentContents[0] === "B\n");
+  assert.deepEqual(await readdir(concurrent), ["one.txt", "two.txt"]);
+
+  const stale = join(root, "stale-lock");
+  await mkdir(stale);
+  const staleLock = join(stale, ".artifact-write.lock");
+  await mkdir(staleLock);
+  await assert.rejects(writeArtifactSet(stale, { "one.txt": "unpublished\n" }, { lockTimeoutMs: 0 }), /lock is held or stale/u);
+  assert.deepEqual(await readdir(stale), [".artifact-write.lock"]);
+  await rmdir(staleLock);
 });

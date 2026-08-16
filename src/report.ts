@@ -1,6 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { DrillReport, Finding } from "./runner.js";
+import { writeArtifactSet } from "./safe-output.js";
 
 function xml(value: unknown): string {
   const valid = [...String(value)].filter((character) => {
@@ -33,7 +32,7 @@ export function sarifReport(report: DrillReport) {
     version: "2.1.0",
     $schema: "https://json.schemastore.org/sarif-2.1.0.json",
     runs: [{
-      tool: { driver: { name: "ToolDrill", version: "0.1.0", informationUri: "https://github.com/nripankadas07/tooldrill", rules: ruleIds.map((id) => ({ id, shortDescription: { text: id } })) } },
+      tool: { driver: { name: "ToolDrill", version: "0.1.1", informationUri: "https://github.com/nripankadas07/tooldrill", rules: ruleIds.map((id) => ({ id, shortDescription: { text: id } })) } },
       results: report.results.flatMap((result) => result.findings.map((finding) => ({ ruleId: finding.ruleId, level: sarifLevel(finding), message: { text: `${result.caseId}: ${finding.message}` }, locations: [{ physicalLocation: { artifactLocation: { uri: report.manifest.uri }, region: { startLine: 1 } }, logicalLocations: [{ name: finding.path ?? result.caseId }] }] }))),
     }],
   };
@@ -45,12 +44,11 @@ export function htmlReport(report: DrillReport): string {
 }
 
 export async function writeArtifacts(outDir: string, report: DrillReport): Promise<void> {
-  await mkdir(outDir, { recursive: true });
-  await Promise.all([
-    writeFile(join(outDir, "report.json"), `${JSON.stringify(report, null, 2)}\n`),
-    writeFile(join(outDir, "report.md"), markdownReport(report)),
-    writeFile(join(outDir, "junit.xml"), junitReport(report)),
-    writeFile(join(outDir, "results.sarif"), `${JSON.stringify(sarifReport(report), null, 2)}\n`),
-    writeFile(join(outDir, "index.html"), htmlReport(report)),
-  ]);
+  await writeArtifactSet(outDir, {
+    "report.json": `${JSON.stringify(report, null, 2)}\n`,
+    "report.md": markdownReport(report),
+    "junit.xml": junitReport(report),
+    "results.sarif": `${JSON.stringify(sarifReport(report), null, 2)}\n`,
+    "index.html": htmlReport(report),
+  });
 }

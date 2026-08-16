@@ -1,6 +1,6 @@
 {
   "name": "tooldrill",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Deterministic MCP tool-manifest conformance and boundary tester.",
   "type": "module",
   "private": true,
