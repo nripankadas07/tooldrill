@@ -42,7 +42,7 @@ The command above intentionally exits with status `1` because the checked-in fix
 - timeout and pre-dispatch cancellation transcript behavior;
 - primitive counterexample shrinking.
 
-Manifests are runtime-validated before generation. Unsupported keywords such as `$ref` and `oneOf`, unknown types, invalid or unsynthesizable patterns, empty enums, missing required-property definitions, contradictory bounds, non-finite/oversized limits, cyclic schema objects, and manifests exceeding width/case/aggregate-witness budgets fail closed instead of being silently ignored. JSON Schema string lengths use Unicode code points. Every generated case is checked against the input schema, cloned, and deeply frozen before an adapter is invoked.
+Manifests are runtime-validated before generation. Unsupported keywords such as `$ref` and `oneOf`, unknown types, invalid or unsynthesizable patterns, empty enums, missing required-property definitions, contradictory bounds, non-finite/oversized limits, cyclic schema objects, and manifests exceeding width/case/aggregate-witness budgets fail closed instead of being silently ignored. Supported patterns require explicit `^...$` whole-string anchors and are evaluated by a bounded parser rather than dynamic regular-expression compilation. JSON Schema string lengths use Unicode code points. Every generated case is checked against the input schema, cloned, and deeply frozen before an adapter is invoked.
 
 ## Stable artifacts
 

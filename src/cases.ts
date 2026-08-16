@@ -1,6 +1,7 @@
 import {
   MAX_AGGREGATE_CASE_NODES,
   MAX_GENERATED_CASES,
+  MAX_GENERATED_CARDINALITY,
   assertAggregateGeneratedCaseBudget,
   assertGeneratedWitness,
   assertSupportedManifest,
@@ -18,6 +19,19 @@ export interface DrillCase {
   mode: CaseMode;
   description: string;
   arguments: Record<string, unknown>;
+}
+
+const CASE_TEXT_LIMIT = MAX_GENERATED_CARDINALITY + 1;
+const CASE_TEXT = {
+  a: "a".repeat(CASE_TEXT_LIMIT),
+  A: "A".repeat(CASE_TEXT_LIMIT),
+  "0": "0".repeat(CASE_TEXT_LIMIT),
+  "!": "!".repeat(CASE_TEXT_LIMIT),
+} as const;
+
+function boundedCaseText(character: keyof typeof CASE_TEXT, length: number): string {
+  if (!Number.isSafeInteger(length) || length < 0 || length > CASE_TEXT_LIMIT) throw new Error("generated string length is outside deterministic case limits");
+  return CASE_TEXT[character].slice(0, length);
 }
 
 function without(schema: JsonSchema, key: keyof JsonSchema): JsonSchema {
@@ -93,7 +107,9 @@ function invalidPatternValue(schema: JsonSchema): string | undefined {
   const minimum = schema.minLength ?? 0;
   const maximum = schema.maxLength ?? Math.max(minimum, 32);
   const lengths = [...new Set([minimum, Math.min(maximum, Math.max(minimum, 1)), Math.min(maximum, Math.max(minimum, 4)), maximum])];
-  const candidates = ["\n", "123!", "__invalid_pattern__", ...lengths.flatMap((length) => ["a".repeat(length), "A".repeat(length), "0".repeat(length), "!".repeat(length)])];
+  const candidates = ["\n", "123!", "__invalid_pattern__", ...lengths.flatMap((length) => [
+    boundedCaseText("a", length), boundedCaseText("A", length), boundedCaseText("0", length), boundedCaseText("!", length),
+  ])];
   return candidates.find((candidate) => validate(relaxed, candidate).length === 0 && validate(schema, candidate).some((issue) => issue.keyword === "pattern"));
 }
 
@@ -121,22 +137,29 @@ function cloneWith(root: Record<string, unknown>, path: ValuePath, value: unknow
   return copy;
 }
 
+function omitAtPath(current: unknown, path: ValuePath, index: number): unknown {
+  const segment = path[index];
+  if (segment === undefined) throw new Error(`cannot omit generated path ${formatPath(path)}`);
+  const final = index === path.length - 1;
+  if (typeof segment === "number" && Array.isArray(current)) {
+    if (!Number.isSafeInteger(segment) || segment < 0 || segment >= current.length) throw new Error(`cannot omit generated path ${formatPath(path)}`);
+    if (final) return [...current.slice(0, segment), ...current.slice(segment + 1)];
+    return current.map((entry, childIndex) => childIndex === segment ? omitAtPath(entry, path, index + 1) : entry);
+  }
+  if (typeof segment === "string" && current !== null && typeof current === "object" && !Array.isArray(current)) {
+    const entries = Object.entries(current);
+    if (!Object.hasOwn(current, segment)) throw new Error(`cannot omit generated path ${formatPath(path)}`);
+    if (final) return Object.fromEntries(entries.filter(([key]) => key !== segment));
+    return Object.fromEntries(entries.map(([key, entry]) => [key, key === segment ? omitAtPath(entry, path, index + 1) : entry]));
+  }
+  throw new Error(`cannot omit generated path ${formatPath(path)}`);
+}
+
 function cloneWithout(root: Record<string, unknown>, path: ValuePath): Record<string, unknown> {
   const copy = cloneGeneratedWitness(root, `generated ${formatPath(path)} context`);
-  let current: unknown = copy;
-  for (let index = 0; index < path.length - 1; index += 1) {
-    const segment = path[index];
-    current = typeof segment === "number" && Array.isArray(current)
-      ? current[segment]
-      : typeof segment === "string" && current !== null && typeof current === "object"
-        ? (current as Record<string, unknown>)[segment]
-        : undefined;
-  }
-  const final = path.at(-1);
-  if (typeof final === "number" && Array.isArray(current)) current.splice(final, 1);
-  else if (typeof final === "string" && current !== null && typeof current === "object") delete (current as Record<string, unknown>)[final];
-  assertGeneratedWitness(copy, `generated ${formatPath(path)} omission witness`);
-  return copy;
+  const result = omitAtPath(copy, path, 0) as Record<string, unknown>;
+  assertGeneratedWitness(result, `generated ${formatPath(path)} omission witness`);
+  return result;
 }
 
 function formatPath(path: ValuePath): string {
@@ -199,8 +222,8 @@ export function generateCases(manifest: ToolManifest): DrillCase[] {
       const candidate = schema.type === "integer" ? Math.floor(schema.maximum) + 1 : schema.maximum + Math.max(1, Math.abs(schema.maximum) * Number.EPSILON * 2);
       add(`invalid.${label}.above-maximum`, "invalid", `${label} is above maximum`, cloneWith(nodeContext, path, candidate), "maximum");
     }
-    if (schema.minLength !== undefined && schema.minLength > 0) add(`invalid.${label}.too-short`, "invalid", `${label} is below minLength`, cloneWith(nodeContext, path, "a".repeat(schema.minLength - 1)), "minLength");
-    if (schema.maxLength !== undefined) add(`invalid.${label}.too-long`, "invalid", `${label} is above maxLength`, cloneWith(nodeContext, path, "a".repeat(schema.maxLength + 1)), "maxLength");
+    if (schema.minLength !== undefined && schema.minLength > 0) add(`invalid.${label}.too-short`, "invalid", `${label} is below minLength`, cloneWith(nodeContext, path, boundedCaseText("a", schema.minLength - 1)), "minLength");
+    if (schema.maxLength !== undefined) add(`invalid.${label}.too-long`, "invalid", `${label} is above maxLength`, cloneWith(nodeContext, path, boundedCaseText("a", schema.maxLength + 1)), "maxLength");
     if (schema.pattern !== undefined) {
       const candidate = invalidPatternValue(schema);
       if (candidate !== undefined) add(`invalid.${label}.pattern`, "invalid", `${label} violates pattern`, cloneWith(nodeContext, path, candidate), "pattern");

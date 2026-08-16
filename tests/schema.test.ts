@@ -67,6 +67,24 @@ test("pattern validation rejects ambiguous repetition and bounds evaluated input
   }]);
 });
 
+test("parsed whole-string patterns preserve supported semantics without compiling manifest regexes", () => {
+  const schema: JsonSchema = { type: "string", pattern: "^[^0-9]\\w{1,2}$", minLength: 2, maxLength: 3 };
+  assert.deepEqual(validate(schema, "A_"), []);
+  assert.deepEqual(validate(schema, "A_z"), []);
+  assert.ok(validate(schema, "7_").some((issue) => issue.keyword === "pattern"));
+  assert.ok(validate({ type: "string", pattern: "^.$" }, "\n").some((issue) => issue.keyword === "pattern"));
+  assert.throws(() => synthesizeString({ type: "string", pattern: "[A-Z]+" }), /whole-string anchors/u);
+  assert.throws(() => synthesizeString({ type: "string", pattern: "^[z-a]$" }), /descending/u);
+  for (const pattern of ["^*$", "^a+?$", "^[\\d-z]$", "^\\!$", "^\\01$"]) {
+    assert.throws(
+      () => synthesizeString({ type: "string", pattern }),
+      /stray|stacked|range endpoints|unsupported|decimal escape/u,
+    );
+  }
+  assert.equal(synthesizeString({ type: "string", maxLength: 10_000 }, "maximum").length, 10_000);
+  assert.throws(() => synthesizeString({ type: "string", maxLength: 10_001 }, "maximum"), /generation limits/u);
+});
+
 test("case generator is deterministic and covers boundary, invalid, timeout, and cancellation modes", () => {
   const first = generateCases(defectiveManifest);
   assert.deepEqual(first, generateCases(defectiveManifest));
@@ -186,6 +204,31 @@ test("validator uses own properties for required and additionalProperties", () =
   assert.ok(validate(schema, {}).some((issue) => issue.keyword === "required"));
   assert.ok(validate({ ...schema, required: [] }, JSON.parse('{"toString":"unexpected"}')).some((issue) => issue.keyword === "additionalProperties"));
   assert.ok(validate({ ...schema, required: [] }, JSON.parse('{"constructor":"unexpected"}')).some((issue) => issue.keyword === "additionalProperties"));
+});
+
+test("required prototype-named properties are omitted by reconstruction without prototype mutation", () => {
+  const names = ["__proto__", "constructor", "prototype"];
+  const manifest: ToolManifest = {
+    version: MANIFEST_VERSION,
+    name: "prototype-named-properties",
+    description: "dynamic property regression fixture",
+    inputSchema: {
+      type: "object",
+      properties: Object.fromEntries(names.map((name) => [name, { type: "string" as const }])),
+      required: names,
+      additionalProperties: false,
+    },
+    outputSchema: { type: "null" },
+  };
+  const cases = generateCases(manifest);
+  for (const name of names) {
+    const omission = cases.find((item) => item.id === `invalid.${name}.required`);
+    assert.ok(omission);
+    assert.equal(Object.hasOwn(omission.arguments, name), false);
+    assert.ok(validate(manifest.inputSchema, omission.arguments).some((issue) => issue.keyword === "required"));
+  }
+  assert.equal(Object.getPrototypeOf(cases[0]?.arguments), Object.prototype);
+  assert.equal(Object.hasOwn(Object.prototype, "polluted"), false);
 });
 
 test("generator produces correctly classified pattern, integer, enum, and nested cases", () => {
