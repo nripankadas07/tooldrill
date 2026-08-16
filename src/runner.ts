@@ -1,6 +1,6 @@
 import { firstInvalidPrimitive, generateCases, primitiveShrinkCandidates, type DrillCase } from "./cases.js";
 import { type Invocation, type ToolServer } from "./fixture.js";
-import { assertSupportedManifest, type ToolManifest, type ValidationIssue, validate } from "./schema.js";
+import { assertGeneratedWitness, assertSupportedManifest, type ToolManifest, type ValidationIssue, validate } from "./schema.js";
 
 export const RESULT_VERSION = "tooldrill.result/v1" as const;
 export interface Finding { ruleId: "input-generator" | "response-schema" | "stable-error" | "timeout" | "cancellation" | "server-error"; message: string; path?: string }
@@ -39,23 +39,45 @@ function exactKeys(value: Record<string, unknown>, expected: readonly string[]):
   return actual.length === sortedExpected.length && actual.every((key, index) => key === sortedExpected[index]);
 }
 
+function denseStringArray(value: unknown): value is string[] {
+  return Array.isArray(value)
+    && Object.keys(value).length === value.length
+    && Object.keys(value).every((key, index) => key === String(index))
+    && value.every((entry) => typeof entry === "string");
+}
+
+function deepFreezeJson<T>(value: T): T {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    for (const child of Object.values(value as Record<string, unknown>)) deepFreezeJson(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+function cloneGeneratedWitness<T>(value: T, label: string): T {
+  assertGeneratedWitness(value, label);
+  return structuredClone(value);
+}
+
 async function invokeChecked(server: ToolServer, args: Record<string, unknown>, context: Parameters<ToolServer["invoke"]>[1]): Promise<Invocation> {
-  const value: unknown = await server.invoke(args, context);
+  const invocationArgs = deepFreezeJson(cloneGeneratedWitness(args, "adapter invocation witness"));
+  const invocationContext = Object.freeze({ ...context });
+  const value: unknown = await server.invoke(invocationArgs, invocationContext);
   if (!isRecord(value) || !["ok", "error", "timeout", "cancelled"].includes(String(value.status))) throw new TypeError("adapter returned an invalid invocation");
   if (typeof value.elapsedMs !== "number" || !Number.isFinite(value.elapsedMs) || value.elapsedMs < 0) throw new TypeError("adapter returned an invalid elapsed time");
-  if (!Array.isArray(value.transcript) || value.transcript.some((entry) => typeof entry !== "string")) throw new TypeError("adapter returned an invalid transcript");
+  if (!denseStringArray(value.transcript)) throw new TypeError("adapter returned an invalid transcript");
   if (value.status === "ok" && !exactKeys(value, ["status", "value", "elapsedMs", "transcript"])) throw new TypeError("adapter returned an invalid ok invocation");
   if (value.status === "error") {
     if (!exactKeys(value, ["status", "error", "elapsedMs", "transcript"]) || !isRecord(value.error) || !exactKeys(value.error, ["code", "message"]) || typeof value.error.code !== "string" || typeof value.error.message !== "string") throw new TypeError("adapter returned an invalid error invocation");
   }
   if ((value.status === "timeout" || value.status === "cancelled") && !exactKeys(value, ["status", "elapsedMs", "transcript"])) throw new TypeError("adapter returned an invalid terminal invocation");
-  return value as unknown as Invocation;
+  return structuredClone(value) as Invocation;
 }
 
 async function shrinkInvalid(manifest: ToolManifest, server: ToolServer, drillCase: DrillCase): Promise<Record<string, unknown> | undefined> {
   const target = firstInvalidPrimitive(manifest, drillCase.arguments);
   if (target === undefined) return undefined;
-  let best = structuredClone(drillCase.arguments);
+  let best = cloneGeneratedWitness(drillCase.arguments, "shrink baseline witness");
   for (const candidate of primitiveShrinkCandidates(target.value)) {
     const next = { ...best, [target.key]: candidate };
     if (validate(manifest.inputSchema, next).length === 0) continue;
@@ -69,7 +91,8 @@ async function shrinkInvalid(manifest: ToolManifest, server: ToolServer, drillCa
 }
 
 async function runCase(manifest: ToolManifest, server: ToolServer, drillCase: DrillCase): Promise<CaseResult> {
-  const inputIssues = validate(manifest.inputSchema, drillCase.arguments);
+  const caseArguments = cloneGeneratedWitness(drillCase.arguments, `case ${drillCase.id} witness`);
+  const inputIssues = validate(manifest.inputSchema, caseArguments);
   const findings: Finding[] = [];
   const transcript = [`case:${drillCase.id}`, `input-validation:${inputIssues.length}`];
   let shrunkArguments: Record<string, unknown> | undefined;
@@ -77,24 +100,24 @@ async function runCase(manifest: ToolManifest, server: ToolServer, drillCase: Dr
   try {
     if (drillCase.mode === "invalid") {
       if (inputIssues.length === 0) findings.push({ ruleId: "input-generator", message: "generated invalid case unexpectedly satisfies the schema" });
-      const first = await invokeChecked(server, drillCase.arguments, { caseId: drillCase.id, attempt: 0 });
-      const second = await invokeChecked(server, drillCase.arguments, { caseId: drillCase.id, attempt: 1 });
+      const first = await invokeChecked(server, caseArguments, { caseId: drillCase.id, attempt: 0 });
+      const second = await invokeChecked(server, caseArguments, { caseId: drillCase.id, attempt: 1 });
       transcript.push(...first.transcript.map((entry) => `first:${entry}`), ...second.transcript.map((entry) => `second:${entry}`));
       if (!stableError(first, second)) {
         findings.push({ ruleId: "stable-error", message: "repeated invalid input did not produce the same error code and message" });
         shrunkArguments = await shrinkInvalid(manifest, server, drillCase);
       }
     } else if (drillCase.mode === "timeout") {
-      const invocation = await invokeChecked(server, drillCase.arguments, { caseId: drillCase.id, attempt: 0, timeoutMs: 5 });
+      const invocation = await invokeChecked(server, caseArguments, { caseId: drillCase.id, attempt: 0, timeoutMs: 5 });
       transcript.push(...invocation.transcript, `elapsed:${invocation.elapsedMs}`);
       if (invocation.status !== "timeout") findings.push({ ruleId: "timeout", message: `server returned ${invocation.status} after ${invocation.elapsedMs}ms instead of timing out` });
     } else if (drillCase.mode === "cancellation") {
-      const invocation = await invokeChecked(server, drillCase.arguments, { caseId: drillCase.id, attempt: 0, cancelled: true });
+      const invocation = await invokeChecked(server, caseArguments, { caseId: drillCase.id, attempt: 0, cancelled: true });
       transcript.push(...invocation.transcript);
       if (invocation.status !== "cancelled") findings.push({ ruleId: "cancellation", message: `server returned ${invocation.status} for a pre-cancelled call` });
     } else {
       if (inputIssues.length > 0) findings.push({ ruleId: "input-generator", message: "generated valid case violates the input schema" });
-      const invocation = await invokeChecked(server, drillCase.arguments, { caseId: drillCase.id, attempt: 0 });
+      const invocation = await invokeChecked(server, caseArguments, { caseId: drillCase.id, attempt: 0 });
       transcript.push(...invocation.transcript);
       if (invocation.status !== "ok") findings.push({ ruleId: "server-error", message: `valid input returned ${invocation.status}` });
       else {
@@ -113,7 +136,7 @@ async function runCase(manifest: ToolManifest, server: ToolServer, drillCase: Dr
     caseId: drillCase.id,
     mode: drillCase.mode,
     status: findings.length === 0 ? "pass" : "fail",
-    arguments: drillCase.arguments,
+    arguments: caseArguments,
     inputIssues,
     findings,
     transcript,
